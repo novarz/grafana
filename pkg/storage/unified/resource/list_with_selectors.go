@@ -2,10 +2,15 @@ package resource
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"slices"
+	"strconv"
 
+	claims "github.com/grafana/authlib/types"
 	"github.com/grafana/grafana-app-sdk/app"
+	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	"github.com/grafana/grafana/pkg/storage/unified/resourcepb"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -82,39 +87,179 @@ func (s *server) listWithSelectors(ctx context.Context, req *resourcepb.ListRequ
 	}
 
 	s.log.Info("Search used for List with selectors", "group", req.Options.Key.Group, "resource", req.Options.Key.Resource, "search_hits", searchResp.TotalHits, "with_pagination", req.NextPageToken != "", "search_after", srq.SearchAfter, "selectable_fields", req.Options.Fields, "labels", req.Options.Labels)
-	// Using searchResp.GetResults().GetRows() will not panic if anything is nil on the path.
-	for _, row := range searchResp.GetResults().GetRows() {
-		// TODO: use batch reads
-		// The Read() will also handle permission checks here
-		val, err := s.Read(ctx, &resourcepb.ReadRequest{
-			Key:             row.Key,
-			ResourceVersion: row.ResourceVersion,
-		})
-		if err := ErrorFromResponse(val.GetError(), err); err != nil {
-			resErr := AsErrorResult(err)
-			if resErr.Code == http.StatusForbidden {
+
+	rows := searchResp.GetResults().GetRows()
+
+	// Read in chunks and stop once the page is full, so a large page neither
+	// pulls every body into memory nor lets a later hit's error fail a list the
+	// client would never have paged to.
+	for chunk := range slices.Chunk(rows, searchReadChunkSize) {
+		values, batched, err := s.readSearchRows(ctx, chunk)
+		if err != nil {
+			return nil, err
+		}
+
+		// The batched read did no authorization, so check the chunk in one call.
+		// The per-resource fallback authorizes inside Read.
+		var authorized []bool
+		if batched {
+			authorized, err = s.authorizeSearchRows(ctx, req, chunk, values)
+			if err != nil {
+				return &resourcepb.ListResponse{Error: AsErrorResult(err)}, nil
+			}
+		}
+
+		for i, row := range chunk {
+			val := values[i]
+			if val == nil {
+				return &resourcepb.ListResponse{Error: &resourcepb.ErrorResult{
+					Code:    http.StatusInternalServerError,
+					Message: "empty resource read response",
+				}}, nil
+			}
+			if err := ErrorFromResponse(val.Error, nil); err != nil {
+				resErr := AsErrorResult(err)
+				if resErr.Code == http.StatusForbidden {
+					continue
+				}
+				return &resourcepb.ListResponse{Error: resErr}, nil
+			}
+			if batched && !authorized[i] {
 				continue
 			}
-			return &resourcepb.ListResponse{Error: resErr}, nil
-		}
-		pageBytes += len(val.Value)
-		rsp.Items = append(rsp.Items, &resourcepb.ResourceWrapper{
-			Value:           val.Value,
-			ResourceVersion: val.ResourceVersion,
-		})
-		if (req.Limit > 0 && len(rsp.Items) >= int(req.Limit)) || pageBytes >= s.maxPageSizeBytes {
-			token, err := NewSearchContinueToken(row.GetSortFields(), listRv)
-			if err != nil {
-				return &resourcepb.ListResponse{
-					Error: NewBadRequestError("invalid continue token"),
-				}, nil
+			pageBytes += len(val.Value)
+			rsp.Items = append(rsp.Items, &resourcepb.ResourceWrapper{
+				Value:           val.Value,
+				ResourceVersion: val.ResourceVersion,
+			})
+			if (req.Limit > 0 && len(rsp.Items) >= int(req.Limit)) || pageBytes >= s.maxPageSizeBytes {
+				token, err := NewSearchContinueToken(row.GetSortFields(), listRv)
+				if err != nil {
+					return &resourcepb.ListResponse{
+						Error: NewBadRequestError("invalid continue token"),
+					}, nil
+				}
+				rsp.NextPageToken = token
+				return rsp, nil
 			}
-			rsp.NextPageToken = token
-			return rsp, nil
 		}
 	}
 
 	return rsp, nil
+}
+
+// searchReadChunkSize caps the over-read to one chunk while keeping reads batched.
+const searchReadChunkSize = 50
+
+// readSearchRows reads the bodies for one chunk of search hits, batched when the
+// backend supports it and per-resource otherwise.
+func (s *server) readSearchRows(ctx context.Context, rows []*resourcepb.ResourceTableRow) ([]*BackendReadResponse, bool, error) {
+	requests := make([]*resourcepb.ReadRequest, len(rows))
+	for i, row := range rows {
+		if row == nil {
+			requests[i] = &resourcepb.ReadRequest{}
+			continue
+		}
+		requests[i] = &resourcepb.ReadRequest{
+			Key:             row.Key,
+			ResourceVersion: row.ResourceVersion,
+		}
+	}
+
+	values, err := s.backend.BatchReadResource(ctx, requests)
+	if err == nil {
+		if len(values) != len(rows) {
+			return nil, true, fmt.Errorf("batch resource reader returned %d responses for %d requests", len(values), len(rows))
+		}
+		return values, true, nil
+	}
+	if !errors.Is(err, ErrBatchReadUnsupported) {
+		return nil, true, err
+	}
+
+	// No batched read: read each resource on its own. Read applies its own authz,
+	// so the caller does not re-check these rows.
+	values = make([]*BackendReadResponse, len(rows))
+	for i, row := range rows {
+		val, err := s.Read(ctx, &resourcepb.ReadRequest{
+			Key:             row.Key,
+			ResourceVersion: row.ResourceVersion,
+		})
+		if val == nil {
+			values[i] = &BackendReadResponse{Error: AsErrorResult(err)}
+			continue
+		}
+		values[i] = &BackendReadResponse{
+			Key:             row.Key,
+			ResourceVersion: val.ResourceVersion,
+			Value:           val.Value,
+			Error:           val.Error,
+		}
+	}
+	return values, false, nil
+}
+
+// authorizeSearchRows checks a chunk of rows in one BatchCheck (further split by
+// MaxBatchCheckItems), returning one allow/deny per row. Rows with no body or a
+// read error are left denied; the caller handles those before consulting this.
+func (s *server) authorizeSearchRows(ctx context.Context, req *resourcepb.ListRequest, rows []*resourcepb.ResourceTableRow, values []*BackendReadResponse) ([]bool, error) {
+	user, ok := claims.AuthInfoFrom(ctx)
+	if !ok || user == nil {
+		return nil, fmt.Errorf("no user found in context")
+	}
+
+	allowed := make([]bool, len(rows))
+	checks := make([]claims.BatchCheckItem, 0, len(rows))
+	indices := make([]int, 0, len(rows))
+	for i, row := range rows {
+		if values[i] == nil || values[i].Error != nil {
+			continue
+		}
+		name := ""
+		if row != nil && row.Key != nil {
+			name = row.Key.Name
+		}
+		checks = append(checks, claims.BatchCheckItem{
+			CorrelationID:      strconv.Itoa(i),
+			Verb:               utils.VerbGet,
+			Group:              req.Options.Key.Group,
+			Resource:           req.Options.Key.Resource,
+			Name:               name,
+			Folder:             values[i].Folder,
+			FreshnessTimestamp: ResourceVersionTime(values[i].ResourceVersion),
+		})
+		indices = append(indices, i)
+	}
+
+	for start := 0; start < len(checks); start += claims.MaxBatchCheckItems {
+		end := min(start+claims.MaxBatchCheckItems, len(checks))
+		batchResp, err := s.access.BatchCheck(ctx, user, claims.BatchCheckRequest{
+			Namespace: req.Options.Key.Namespace,
+			Checks:    checks[start:end],
+		})
+		if err != nil {
+			if AsErrorResult(err).Code == http.StatusForbidden {
+				continue
+			}
+			return nil, err
+		}
+		for j := start; j < end; j++ {
+			result, exists := batchResp.Results[checks[j].CorrelationID]
+			if !exists {
+				continue
+			}
+			if result.Error != nil {
+				if AsErrorResult(result.Error).Code == http.StatusForbidden {
+					continue
+				}
+				return nil, result.Error
+			}
+			if result.Allowed {
+				allowed[indices[j]] = true
+			}
+		}
+	}
+	return allowed, nil
 }
 
 // tokenFromOtherListPath reports whether a continue token was issued by the other
