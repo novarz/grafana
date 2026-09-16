@@ -32,7 +32,13 @@ import { type MatcherScope } from '@grafana/schema';
 import { useTheme2 } from '../../../themes/ThemeContext';
 import { type TableColumnResizeActionCallback } from '../types';
 
-import { CELL_HORIZONTAL_CHROME, FIRST_COLUMN_EXTRA_PADDING, getPaginationChromeHeight, TABLE } from './constants';
+import {
+  CELL_HORIZONTAL_CHROME,
+  FIRST_COLUMN_EXTRA_PADDING,
+  getPaginationChromeHeight,
+  SCROLL_SHADOW_THRESHOLD,
+  TABLE,
+} from './constants';
 import { IS_SAFARI_26 } from './styles';
 import {
   type FilterType,
@@ -777,6 +783,104 @@ export function useScrollbarWidth(ref: RefObject<DataGridHandle | null>, height:
   }, [ref, height, updateScrollbarDimensions]);
 
   return scrollbarWidth;
+}
+
+/**
+ * Fades a shadow in at the top or bottom edge of the grid's scroll viewport while rows are scrolled
+ * out of view in that direction, the same cue `ScrollContainer`'s `showScrollIndicators` gives:
+ * the table's scrollbar is thin and, on platforms that overlay it, invisible until the user
+ * scrolls, so nothing otherwise tells them more rows exist.
+ *
+ * Both the visibility and the edge offsets are written straight to the overlay nodes rather than
+ * held in state, so scrolling never re-renders the grid.
+ */
+export function useScrollShadows(
+  ref: RefObject<DataGridHandle | null>,
+  enabled: boolean,
+  { topOffset, bottomOffset }: { topOffset: number; bottomOffset: number }
+) {
+  const topRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const sync = useCallback(() => {
+    const el = ref.current?.element;
+    if (!enabled || !el) {
+      return;
+    }
+    const { scrollTop, scrollHeight, clientHeight, offsetHeight } = el;
+    // A horizontal scrollbar takes its space out of the bottom of the grid's padding box, below
+    // both the rows and the sticky footer, so the bottom shadow has to clear it or it sits on the
+    // scrollbar instead of on the last visible row. The grid draws no border (see `getGridStyles`),
+    // so the difference between the two heights is the scrollbar alone.
+    const scrollbarHeight = offsetHeight - clientHeight;
+    const scrollBottom = scrollHeight - clientHeight - scrollTop;
+    if (topRef.current) {
+      topRef.current.style.top = `${topOffset}px`;
+      topRef.current.style.opacity = scrollTop > SCROLL_SHADOW_THRESHOLD ? '1' : '0';
+    }
+    if (bottomRef.current) {
+      bottomRef.current.style.bottom = `${bottomOffset + scrollbarHeight}px`;
+      bottomRef.current.style.opacity = scrollBottom > SCROLL_SHADOW_THRESHOLD ? '1' : '0';
+    }
+  }, [ref, enabled, topOffset, bottomOffset]);
+
+  useEffect(() => {
+    const el = ref.current?.element;
+    if (!enabled || !el) {
+      return;
+    }
+
+    let animationFrame: number | undefined;
+    const cancelScheduledSync = () => {
+      if (animationFrame !== undefined) {
+        cancelAnimationFrame(animationFrame);
+        animationFrame = undefined;
+      }
+    };
+    const syncNow = () => {
+      cancelScheduledSync();
+      sync();
+    };
+    const scheduleSyncAfterLayout = () => {
+      if (animationFrame !== undefined) {
+        return;
+      }
+
+      // The first frame lets the mutation reach layout and paint. Reading geometry in the following
+      // frame avoids forcing that layout from a React commit while coalescing a whole DOM update.
+      animationFrame = requestAnimationFrame(() => {
+        animationFrame = requestAnimationFrame(() => {
+          animationFrame = undefined;
+          sync();
+        });
+      });
+    };
+
+    syncNow();
+    el.addEventListener('scroll', syncNow, { passive: true });
+    // Panel resizing changes what fits without moving the scroll position. ResizeObserver runs after
+    // layout, so it can measure immediately and cancel any redundant sync queued by DOM mutations.
+    const resizeObserver = new ResizeObserver(syncNow);
+    resizeObserver.observe(el);
+    // Content height can change without resizing the viewport: nested rows expand, columns re-wrap,
+    // or pages of rows are replaced. Observe those DOM changes instead of reading layout after every
+    // React commit.
+    const mutationObserver = new MutationObserver(scheduleSyncAfterLayout);
+    mutationObserver.observe(el, {
+      attributeFilter: ['class', 'style'],
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    return () => {
+      cancelScheduledSync();
+      el.removeEventListener('scroll', syncNow);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [ref, enabled, sync]);
+
+  return { topRef, bottomRef };
 }
 
 /**
