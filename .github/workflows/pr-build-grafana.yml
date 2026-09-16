@@ -69,7 +69,7 @@ jobs:
         run: yarn install --immutable
       - name: Build frontend
         run: yarn build
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: pr-frontend
           path: public
@@ -89,7 +89,7 @@ jobs:
         with:
           build-number: ${{ github.run_id }}
           build-version: ${{ needs.setup.outputs.version }}
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: pr-backend
           path: bin/linux/amd64
@@ -114,7 +114,7 @@ jobs:
           build-version: ${{ needs.setup.outputs.version }}
           frontend-artifact: pr-frontend
           backend-artifact: pr-backend
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: pr-targz
           path: dist
@@ -158,7 +158,7 @@ jobs:
         run: |
           mkdir -p upload
           cp dist/*.docker.tar.gz upload/
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: pr-docker
           path: upload

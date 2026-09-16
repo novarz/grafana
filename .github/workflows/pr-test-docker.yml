@@ -76,7 +76,7 @@ jobs:
         run: yarn install --immutable
       - name: Build frontend
         run: yarn build
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: pr-frontend
           path: public
@@ -97,7 +97,7 @@ jobs:
         uses: ./.github/actions/build-go
         with:
           build-number: ${{ github.run_id }}
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: pr-backend-linux-amd64
           path: bin/linux/amd64
@@ -123,7 +123,7 @@ jobs:
           build-version: ${{ needs.build-backend.outputs.version }}
           frontend-artifact: pr-frontend
           backend-artifact: pr-backend-linux-amd64
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: pr-source-targz
           path: dist/*.tar.gz
