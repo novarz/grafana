@@ -151,6 +151,11 @@ type BackendReadResponse struct {
 	Error *resourcepb.ErrorResult
 }
 
+// ErrBatchReadUnsupported tells the caller to fall back to per-resource reads.
+// It is a base-interface method, not a runtime type assertion, so a wrapped
+// backend cannot silently lose batching.
+var ErrBatchReadUnsupported = errors.New("batch read not supported by this backend")
+
 type ResourceLastImportTime struct {
 	NamespacedResource
 	LastImportTime time.Time
@@ -167,6 +172,10 @@ type StorageBackend interface {
 
 	// Read a resource from storage optionally at an explicit version
 	ReadResource(context.Context, *resourcepb.ReadRequest) *BackendReadResponse
+
+	// BatchReadResource reads several resources at once, one response per request
+	// in order. Returns ErrBatchReadUnsupported if the backend has no batched read.
+	BatchReadResource(context.Context, []*resourcepb.ReadRequest) ([]*BackendReadResponse, error)
 
 	// When the ResourceServer executes a List request, this iterator will
 	// query the backend for potential results.  All results will be
