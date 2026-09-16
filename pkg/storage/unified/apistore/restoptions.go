@@ -3,6 +3,7 @@
 package apistore
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -53,6 +54,53 @@ func (r *RESTOptionsGetter) WithStorageOptions(opts StorageOptions) generic.REST
 	return &resourceOptionsGetter{parent: r, opts: opts}
 }
 
+// RegisterVersionedOptions declares options for one group+version+resource, for
+// callers that cannot wrap the getter themselves because something else builds
+// their stores -- the app-sdk installer, which asks through [ForResource].
+//
+// Prefer [RESTOptionsGetter.WithStorageOptions] when you do build the store:
+// it needs no key and cannot be registered too late.
+//
+// The key already names the group and version this storage serves, so a caller
+// only has to give [StorageOptions.GVK] a Kind; the rest is filled in from gvr.
+// That matters because an omitted version is not inert: it decides the
+// apiVersion writes are persisted under.
+//
+// A GVK that contradicts the key is rejected, so callers have to handle the
+// error rather than register storage that would persist the wrong kind.
+func (r *RESTOptionsGetter) RegisterVersionedOptions(gvr schema.GroupVersionResource, opts StorageOptions) error {
+	// A GVK disagreeing with its key says this storage persists as something it
+	// does not serve, which would write objects under an apiVersion no served
+	// version accounts for. There is no safe way to continue: honouring the GVK
+	// stores the wrong kind, and overriding it ignores what the caller asked
+	// for. Fail at startup instead, while it is still only a config error.
+	if (opts.GVK.Group != "" && opts.GVK.Group != gvr.Group) ||
+		(opts.GVK.Version != "" && opts.GVK.Version != gvr.Version) {
+		return fmt.Errorf("storage options for %s declare GVK %s, which is outside the group version they are registered for",
+			gvr.String(), opts.GVK.String())
+	}
+	if opts.GVK.Group == "" {
+		opts.GVK.Group = gvr.Group
+	}
+	if opts.GVK.Version == "" {
+		opts.GVK.Version = gvr.Version
+	}
+	r.versioned[gvr] = opts
+	return nil
+}
+
+// ForResource implements the app-sdk's optional RESTOptionsGetterForResource, so
+// an installer that builds its own stores can still get per-version options.
+// Resources with nothing registered for their exact version fall back to this
+// getter, and so to the by-GroupResource map.
+func (r *RESTOptionsGetter) ForResource(gvr schema.GroupVersionResource) generic.RESTOptionsGetter {
+	opts, ok := r.versioned[gvr]
+	if !ok {
+		return r
+	}
+	return &resourceOptionsGetter{parent: r, opts: opts}
+}
+
 // resourceOptionsGetter serves one store's RESTOptions from options its caller
 // already resolved. Everything else -- client, codecs, secrets, version policy
 // -- stays on the parent, which is shared across the whole server.
@@ -73,6 +121,11 @@ type RESTOptionsGetter struct {
 
 	// Each group+resource may need custom options
 	options map[string]StorageOptions
+
+	// versioned holds options declared for an exact group+version+resource, which
+	// take precedence over options. Only [ForResource] reads it, since that is the
+	// only lookup told which version it is serving.
+	versioned map[schema.GroupVersionResource]StorageOptions
 
 	// versionPolicy is shared across every resource this getter serves; nil disables maxAllowedVersion enforcement.
 	versionPolicy *versionpolicy.VersionPolicyRegistry
@@ -97,6 +150,7 @@ func NewRESTOptionsGetterForClient(
 		secrets:        secrets,
 		original:       original,
 		options:        make(map[string]StorageOptions),
+		versioned:      make(map[schema.GroupVersionResource]StorageOptions),
 		configProvider: configProvider,
 		versionPolicy:  versionPolicy,
 	}
