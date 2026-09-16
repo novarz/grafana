@@ -17628,6 +17628,7 @@
     },
     "series-to-fields-transformer-editor": {
       "label-field": "Field",
+      "label-keep-unjoined": "Keep unjoined",
       "label-mode": "Mode",
       "modes": {
         "description": {
@@ -17640,7 +17641,8 @@
           "outer-tabular": "Outer (tabular)",
           "outer-time-series": "Outer (time series)"
         }
-      }
+      },
+      "tooltip-keep-unjoined": "Pass queries that do not have the selected field through untouched instead of dropping them, so a later Join by field transformation can join them on a different field. Requires a field to be selected."
     },
     "series-to-rows-transformer-editor": {
       "description": {
