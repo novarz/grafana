@@ -289,6 +289,57 @@ describe('DashboardSceneUrlSync', () => {
       expect(scene.state.viewPanel).toBeUndefined();
     });
   });
+
+  describe('while planning', () => {
+    const planning = {
+      planId: 'plan-1',
+      planTitle: 'Kafka overview',
+      panelCount: 4,
+      onBuild: jest.fn(),
+      onDismiss: jest.fn(),
+    };
+
+    it('does not open dashboard settings from an editview url param, and does not enter edit mode', () => {
+      const scene = buildTestScene();
+      scene.setState({ isEditing: false, planning });
+      jest.spyOn(scene, 'canEditDashboard').mockReturnValue(true);
+      const onEnterEditMode = jest.spyOn(scene, 'onEnterEditMode');
+
+      scene.urlSync?.updateFromUrl({ editview: 'settings' });
+
+      expect(scene.state.editview).toBeUndefined();
+      expect(scene.state.isEditing).toBe(false);
+      expect(onEnterEditMode).not.toHaveBeenCalled();
+    });
+
+    it('does not open the panel editor from an editPanel url param, and does not enter edit mode', () => {
+      // Without this guard, the branch below calls `this._scene.onEnterEditMode()` directly when
+      // not already editing -- exactly the invariant the static preview depends on never
+      // happening (see refuseWhilePlanning, and RENDER_PLAN's own doc comment on why it never
+      // calls enterEditModeIfNeeded).
+      const scene = buildTestScene();
+      scene.setState({ isEditing: false, planning });
+      const onEnterEditMode = jest.spyOn(scene, 'onEnterEditMode');
+
+      scene.urlSync?.updateFromUrl({ editPanel: 'panel-1' });
+
+      expect(scene.state.editPanel).toBeUndefined();
+      expect(scene.state.isEditing).toBe(false);
+      expect(onEnterEditMode).not.toHaveBeenCalled();
+    });
+
+    it('does not open the share drawer from a shareView url param', () => {
+      // Share is already one of the four guarded actions (its menu submenu and keyboard
+      // shortcuts) -- this is a third route to the same action, not a new one.
+      const scene = buildTestScene();
+      scene.setState({ planning });
+
+      scene.urlSync?.updateFromUrl({ shareView: 'snapshot' });
+
+      expect(scene.state.overlay).toBeUndefined();
+      expect(scene.state.shareView).toBeUndefined();
+    });
+  });
 });
 
 function buildTestSceneWithRow(title: string, { collapse }: { collapse?: boolean } = {}) {

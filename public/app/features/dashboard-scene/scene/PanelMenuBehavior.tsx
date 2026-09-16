@@ -73,20 +73,19 @@ export function panelMenuBehavior(menu: VizPanelMenu) {
       return;
     }
 
+    // A plan preview is a fully static surface: allowlist to View rather than guard each item
+    // (Edit, Get help/Inspect, Copy, legend/style, plugin extensions, ...) individually -- Edit
+    // slipped through the previous per-item guards entirely, and subtraction only ever closes
+    // items we thought of. View is safe: unlike editPanel/editview, viewPanel never triggers
+    // edit mode (DashboardSceneUrlSync) and renders the same static panel with no toolbar.
+    if (dashboard.isPlanning()) {
+      menu.setState({ items: [getViewMenuItem(panel)] });
+      return;
+    }
+
     const isEditingPanel = Boolean(dashboard.state.editPanel);
     if (!isEditingPanel) {
-      items.push({
-        text: t('panel.header-menu.view', `View`),
-        iconClassName: 'eye',
-        shortcut: 'v',
-        href: locationUtil.getUrlForPartial(locationService.getLocation(), {
-          viewPanel: panel.getPathId(),
-          editPanel: undefined,
-        }),
-        onClick: () => {
-          DashboardInteractions.panelActionClicked('view', getPanelIdForVizPanel(panel), 'panel');
-        },
-      });
+      items.push(getViewMenuItem(panel));
     }
 
     if (dashboard.canEditDashboard() && dashboard.state.editable && !isReadOnlyRepeat && !isEditingPanel) {
@@ -427,6 +426,21 @@ export function panelMenuBehavior(menu: VizPanelMenu) {
   };
 
   asyncFunc();
+}
+
+function getViewMenuItem(panel: VizPanel): PanelMenuItem {
+  return {
+    text: t('panel.header-menu.view', `View`),
+    iconClassName: 'eye',
+    shortcut: 'v',
+    href: locationUtil.getUrlForPartial(locationService.getLocation(), {
+      viewPanel: panel.getPathId(),
+      editPanel: undefined,
+    }),
+    onClick: () => {
+      DashboardInteractions.panelActionClicked('view', getPanelIdForVizPanel(panel), 'panel');
+    },
+  };
 }
 
 async function getExploreMenuItem(panel: VizPanel): Promise<PanelMenuItem | undefined> {

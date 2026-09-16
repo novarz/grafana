@@ -12,12 +12,18 @@ import { GroupByVariable, sceneGraph, SceneQueryRunner } from '@grafana/scenes';
 import { type AdHocFilterItem, type PanelContext } from '@grafana/ui';
 
 import { isAnnotationApiAvailable } from '../../annotations/isAnnotationApiAvailable';
+import { openPanelInspector } from '../inspect/panelInspectorOpener';
 import { buildPanelEditScene } from '../panel-edit/PanelEditor';
 import { transformSaveModelToScene } from '../serialization/transformSaveModelToScene';
 import { getQueryRunnerFor } from '../utils/getQueryRunnerFor';
 import { findVizPanelByKey } from '../utils/utils';
 
 import { getAdHocFilterVariableFor, setDashboardPanelContext } from './setDashboardPanelContext';
+
+jest.mock('../inspect/panelInspectorOpener', () => ({
+  ...jest.requireActual('../inspect/panelInspectorOpener'),
+  openPanelInspector: jest.fn(),
+}));
 
 jest.mock('../../annotations/isAnnotationApiAvailable');
 jest.mock('@grafana/runtime/internal', () => ({
@@ -321,6 +327,52 @@ describe('setDashboardPanelContext', () => {
         undefined,
         { showSuccessAlert: false }
       );
+    });
+  });
+
+  describe('while planning', () => {
+    // canAddAnnotations (and canEdit/canDelete) have no isEditing check either -- this is an
+    // immediate backend write reachable by the ordinary drag-to-annotate gesture regardless of
+    // edit mode, so it's refused explicitly (refuseWhilePlanning) rather than relying on a view-
+    // mode rule that doesn't cover it.
+    it('refuses to create, update or delete an annotation', async () => {
+      const { scene, context } = buildTestScene({
+        dashboardCanEdit: true,
+        canAdd: true,
+        canEdit: true,
+        canDelete: true,
+      });
+      scene.setState({
+        planning: { planId: 'plan-1', planTitle: 'Plan', panelCount: 1, onBuild: () => {}, onDismiss: () => {} },
+      });
+
+      await context.onAnnotationCreate!({ from: 100, to: 200, description: 'save it', tags: [] });
+      await context.onAnnotationUpdate!({ from: 100, to: 200, id: 'event-id-123', description: 'updated', tags: [] });
+      await context.onAnnotationDelete!('123');
+
+      expect(postFn).not.toHaveBeenCalled();
+      expect(putFn).not.toHaveBeenCalled();
+      expect(patchFn).not.toHaveBeenCalled();
+      expect(deleteFn).not.toHaveBeenCalled();
+    });
+
+    it('refuses to open the errors/notices popover inspector', async () => {
+      // A third route to inspect-panel, independent of the menu item and the 'i' keyboard
+      // shortcut (both guarded in keyboardShortcuts.ts/PanelMenuBehavior.tsx). Inert today --
+      // the sample generator never reports an error for this popover to attach to -- but that's
+      // incidental, not structural, so it's guarded the same as its siblings.
+      getBooleanValueFn.mockImplementation(
+        (key: string, defaultValue: boolean) => key === FlagKeys.GrafanaNewPanelQueryErrorsUI || defaultValue
+      );
+      const { scene, context } = buildTestScene({ dashboardCanEdit: true });
+      scene.setState({
+        planning: { planId: 'plan-1', planTitle: 'Plan', panelCount: 1, onBuild: () => {}, onDismiss: () => {} },
+      });
+
+      expect(context.onOpenInspector).toBeDefined();
+      context.onOpenInspector!();
+
+      expect(openPanelInspector).not.toHaveBeenCalled();
     });
   });
 
