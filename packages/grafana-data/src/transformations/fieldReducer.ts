@@ -13,6 +13,7 @@ export enum ReducerID {
   mean = 'mean',
   variance = 'variance',
   stdDev = 'stdDev',
+  ema = 'ema',
   last = 'last',
   median = 'median',
   first = 'first',
@@ -314,6 +315,15 @@ export const fieldReducers = new Registry<FieldReducerInfo>(() => [
     description: 'Standard deviation of all values in a field',
     standard: false,
     reduce: calculateStdDev,
+    preservesUnits: true,
+  },
+  {
+    id: ReducerID.ema,
+    name: 'EMA',
+    description: 'Exponential moving average',
+    standard: false,
+    emptyInputResult: 0,
+    reduce: calculateEMA,
     preservesUnits: true,
   },
   {
@@ -634,6 +644,35 @@ function calculateLastNotNull(field: Field, ignoreNulls: boolean, nullAsZero: bo
     }
   }
   return { lastNotNull: null };
+}
+
+/**
+ * Span-based exponential moving average: alpha = 2 / (span + 1).
+ * The first non-null value seeds the series; later nulls carry the previous EMA.
+ */
+export function getExponentialMovingAverageValues(values: unknown[], span: number): number[] {
+  const alpha = 2 / (span + 1);
+  const result: number[] = [];
+  let ema: number | undefined;
+
+  for (let i = 0; i < values.length; i++) {
+    const currentValue = values[i];
+    if (currentValue != null) {
+      ema = ema === undefined ? Number(currentValue) : alpha * Number(currentValue) + (1 - alpha) * ema;
+    }
+    result.push(ema ?? 0);
+  }
+
+  return result;
+}
+
+function calculateEMA(field: Field): FieldCalcs {
+  if (!(field.type === FieldType.number || field.type === FieldType.time)) {
+    return { ema: 0 };
+  }
+
+  const values = getExponentialMovingAverageValues(field.values, Math.max(field.values.length, 1));
+  return { ema: values.length ? values[values.length - 1] : 0 };
 }
 
 /** Calculates standard deviation and variance */

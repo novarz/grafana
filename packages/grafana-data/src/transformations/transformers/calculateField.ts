@@ -8,7 +8,7 @@ import { type DataFrame, FieldType, type Field } from '../../types/dataFrame';
 import { type DataTransformContext, type DataTransformerInfo } from '../../types/transformations';
 import { BinaryOperationID, binaryOperators } from '../../utils/binaryOperators';
 import { UnaryOperationID, unaryOperators } from '../../utils/unaryOperators';
-import { doStandardCalcs, fieldReducers, ReducerID } from '../fieldReducer';
+import { doStandardCalcs, fieldReducers, getExponentialMovingAverageValues, ReducerID } from '../fieldReducer';
 import { getFieldMatcher } from '../matchers';
 import { FieldMatcherID } from '../matchers/ids';
 
@@ -339,8 +339,13 @@ function getWindowCreator(options: WindowOptions, allFrames: DataFrame[]): Value
       return;
     }
 
-    if (![ReducerID.mean, ReducerID.stdDev, ReducerID.variance].includes(options.reducer)) {
+    if (![ReducerID.mean, ReducerID.stdDev, ReducerID.variance, ReducerID.ema].includes(options.reducer)) {
       throw new Error(`Add field from calculation transformation - Unsupported reducer: ${options.reducer}`);
+    }
+
+    // Standard EMA is a recursive trailing smoother; window size is the span, alignment does not apply.
+    if (options.reducer === ReducerID.ema) {
+      return getExponentialMovingAverageValues(selectedField.values, window);
     }
 
     if (options.windowAlignment === WindowAlignment.Centered) {

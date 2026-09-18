@@ -954,6 +954,145 @@ describe('calculateField transformer w/ timeseries', () => {
     });
   });
 
+  it('calculates trailing exponential moving average', async () => {
+    const cfg = {
+      id: DataTransformerID.calculateField,
+      options: {
+        mode: CalculateFieldMode.WindowFunctions,
+        window: {
+          windowAlignment: WindowAlignment.Trailing,
+          field: 'x',
+          windowSize: 1,
+          windowSizeMode: WindowSizeMode.Percentage,
+          reducer: ReducerID.ema,
+        },
+      },
+    };
+
+    const series = toDataFrame({
+      fields: [{ name: 'x', type: FieldType.number, values: [1, 2, 3] }],
+    });
+
+    await expect(transformDataFrame([cfg], [series])).toEmitValuesWith((received) => {
+      const data = received[0][0];
+
+      expect(data.fields.length).toEqual(2);
+      expect(data.fields[1].values).toEqual([1, 1.5, 2.25]);
+    });
+  });
+
+  it('calculates fixed-span exponential moving average', async () => {
+    const cfg = {
+      id: DataTransformerID.calculateField,
+      options: {
+        mode: CalculateFieldMode.WindowFunctions,
+        window: {
+          windowAlignment: WindowAlignment.Trailing,
+          field: 'x',
+          windowSize: 2,
+          windowSizeMode: WindowSizeMode.Fixed,
+          reducer: ReducerID.ema,
+        },
+      },
+    };
+
+    const series = toDataFrame({
+      fields: [{ name: 'x', type: FieldType.number, values: [1, 2, 3] }],
+    });
+
+    await expect(transformDataFrame([cfg], [series])).toEmitValuesWith((received) => {
+      const data = received[0][0];
+
+      expect(data.fields.length).toEqual(2);
+      expect(data.fields[1].values[0]).toEqual(1);
+      expect(data.fields[1].values[1]).toBeCloseTo(1.6667, 4);
+      expect(data.fields[1].values[2]).toBeCloseTo(2.5556, 4);
+    });
+  });
+
+  it('calculates exponential moving average with nulls', async () => {
+    const cfg = {
+      id: DataTransformerID.calculateField,
+      options: {
+        mode: CalculateFieldMode.WindowFunctions,
+        window: {
+          windowAlignment: WindowAlignment.Trailing,
+          field: 'x',
+          windowSize: 0.75,
+          windowSizeMode: WindowSizeMode.Percentage,
+          reducer: ReducerID.ema,
+        },
+      },
+    };
+
+    const series = toDataFrame({
+      fields: [{ name: 'x', type: FieldType.number, values: [1, null, 2, 7] }],
+    });
+
+    await expect(transformDataFrame([cfg], [series])).toEmitValuesWith((received) => {
+      const data = received[0][0];
+
+      expect(data.fields.length).toEqual(2);
+      expect(data.fields[1].values).toEqual([1, 1, 1.5, 4.25]);
+    });
+  });
+
+  it('calculates exponential moving average when the first value is null', async () => {
+    const cfg = {
+      id: DataTransformerID.calculateField,
+      options: {
+        mode: CalculateFieldMode.WindowFunctions,
+        window: {
+          windowAlignment: WindowAlignment.Trailing,
+          field: 'x',
+          windowSize: 1,
+          windowSizeMode: WindowSizeMode.Percentage,
+          reducer: ReducerID.ema,
+        },
+      },
+    };
+
+    const series = toDataFrame({
+      fields: [{ name: 'x', type: FieldType.number, values: [null, 1, 2] }],
+    });
+
+    await expect(transformDataFrame([cfg], [series])).toEmitValuesWith((received) => {
+      const data = received[0][0];
+
+      expect(data.fields.length).toEqual(2);
+      expect(data.fields[1].values).toEqual([0, 1, 1.5]);
+    });
+  });
+
+  it('calculates exponential moving average independently of window alignment', async () => {
+    const cfg = {
+      id: DataTransformerID.calculateField,
+      options: {
+        mode: CalculateFieldMode.WindowFunctions,
+        window: {
+          windowAlignment: WindowAlignment.Centered,
+          field: 'x',
+          windowSize: 2,
+          windowSizeMode: WindowSizeMode.Fixed,
+          reducer: ReducerID.ema,
+        },
+      },
+    };
+
+    const series = toDataFrame({
+      fields: [{ name: 'x', type: FieldType.number, values: [1, 2, 3] }],
+    });
+
+    await expect(transformDataFrame([cfg], [series])).toEmitValuesWith((received) => {
+      const data = received[0][0];
+
+      expect(data.fields.length).toEqual(2);
+      expect(data.fields[1].values[0]).toEqual(1);
+      expect(data.fields[1].values[1]).toBeCloseTo(1.6667, 4);
+      expect(data.fields[1].values[2]).toBeCloseTo(2.5556, 4);
+    });
+  });
+
   it('calculates fixed, trailing moving average with missing values', async () => {
     const cfg = {
       id: DataTransformerID.calculateField,
@@ -1446,6 +1585,18 @@ describe('getNameFromOptions', () => {
       },
     };
     expect(getNameFromOptions(options)).toBe('trailing moving mean(Temperature)');
+  });
+
+  it('returns window function name for exponential moving average', () => {
+    const options = {
+      mode: CalculateFieldMode.WindowFunctions,
+      window: {
+        windowAlignment: WindowAlignment.Trailing,
+        reducer: ReducerID.ema,
+        field: 'Temperature',
+      },
+    };
+    expect(getNameFromOptions(options)).toBe('trailing moving ema(Temperature)');
   });
 
   it('returns window function name without field', () => {
