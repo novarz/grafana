@@ -109,7 +109,10 @@ export const WindowOptionsEditor = (props: {
           onChange={onWindowStatsChange}
           defaultStat={ReducerID.mean}
           filterOptions={(ext) =>
-            ext.id === ReducerID.mean || ext.id === ReducerID.variance || ext.id === ReducerID.stdDev
+            ext.id === ReducerID.mean ||
+            ext.id === ReducerID.variance ||
+            ext.id === ReducerID.stdDev ||
+            ext.id === ReducerID.ema
           }
         />
       </InlineField>
