@@ -8,6 +8,38 @@ import { type AppChromeState } from '../AppChromeService';
 import { useExtensionSidebarContext } from '../ExtensionSidebar/ExtensionSidebarProvider';
 
 /**
+ * Measured height of the header notice banner. It lives outside AppChrome's local state so
+ * sticky offsets from useChromeHeaderHeight stay below the banner while the page scrolls.
+ */
+let chromeNoticeHeight = 0;
+const chromeNoticeHeightListeners = new Set<(height: number) => void>();
+
+export function setChromeNoticeHeight(height: number) {
+  if (chromeNoticeHeight === height) {
+    return;
+  }
+  chromeNoticeHeight = height;
+  for (const listener of chromeNoticeHeightListeners) {
+    listener(height);
+  }
+}
+
+export function useChromeNoticeHeight() {
+  const [height, setHeight] = useState(chromeNoticeHeight);
+
+  useEffect(() => {
+    chromeNoticeHeightListeners.add(setHeight);
+    // The banner may have published a height before this subscriber mounted.
+    setHeight(chromeNoticeHeight);
+    return () => {
+      chromeNoticeHeightListeners.delete(setHeight);
+    };
+  }, []);
+
+  return height;
+}
+
+/**
  * Returns the current header levels given current app chrome state, scopes and screen size.
  */
 export function useChromeHeaderLevels() {
@@ -72,20 +104,22 @@ function getHeaderLevelsGivenState(
 
 /**
  * Translates header levels to header height but also takes the
- * sidebar into account as header height can be treated as zero when the sidebar is open
+ * sidebar into account as header height can be treated as zero when the sidebar is open.
+ * Includes the header notice banner so sticky content stays below it.
  * this should be better named as useStickyTopPadding or something as that is what is's used for
  */
 export function useChromeHeaderHeight() {
   const levels = useChromeHeaderLevels();
+  const noticeHeight = useChromeNoticeHeight();
 
   // if the extension sidebar is open, the inner pane will be scrollable, thus we need to set the header height to 0
   const { isOpen: isExtensionSidebarOpen } = useExtensionSidebarContext();
 
-  if (isExtensionSidebarOpen) {
+  if (isExtensionSidebarOpen || levels === 0) {
     return 0;
   }
 
-  return levels * getChromeHeaderLevelHeight();
+  return levels * getChromeHeaderLevelHeight() + noticeHeight;
 }
 
 /**

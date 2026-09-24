@@ -33,7 +33,12 @@ import { useMegaMenuFocusHelper } from './MegaMenu/utils';
 import { ReturnToPrevious } from './ReturnToPrevious/ReturnToPrevious';
 import { HeaderNoticeBanner } from './TopBar/HeaderNoticeBanner';
 import { SingleTopBar } from './TopBar/SingleTopBar';
-import { getChromeHeaderLevelHeight, useChromeHeaderLevels } from './TopBar/useChromeHeaderHeight';
+import {
+  getChromeHeaderLevelHeight,
+  setChromeNoticeHeight,
+  useChromeHeaderLevels,
+  useChromeNoticeHeight,
+} from './TopBar/useChromeHeaderHeight';
 
 export const EXTENSION_SIDEBAR_FLOATING_TESTID = 'extension-sidebar-floating';
 
@@ -80,7 +85,7 @@ export function AppChrome({ children }: Props) {
   );
 
   const headerLevels = useChromeHeaderLevels();
-  const [noticeHeight, setNoticeHeight] = useState(0);
+  const noticeHeight = useChromeNoticeHeight();
   const styles = useStyles2(
     getStyles,
     headerLevels,
@@ -178,7 +183,7 @@ export function AppChrome({ children }: Props) {
               scopes={scopes}
               showToolbarLevel={headerLevels === 2}
             />
-            <HeaderNoticeBanner onHeightChange={setNoticeHeight} />
+            <HeaderNoticeBanner onHeightChange={setChromeNoticeHeight} />
           </header>
         </>
       )}
