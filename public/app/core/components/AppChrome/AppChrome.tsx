@@ -31,6 +31,7 @@ import { useFullscreenWorkspace } from './FullscreenWorkspace/useFullscreenWorks
 import { MegaMenu, MENU_WIDTH } from './MegaMenu/MegaMenu';
 import { useMegaMenuFocusHelper } from './MegaMenu/utils';
 import { ReturnToPrevious } from './ReturnToPrevious/ReturnToPrevious';
+import { NoticeBanner } from './TopBar/NoticeBanner';
 import { SingleTopBar } from './TopBar/SingleTopBar';
 import { getChromeHeaderLevelHeight, useChromeHeaderLevels } from './TopBar/useChromeHeaderHeight';
 
@@ -170,6 +171,7 @@ export function AppChrome({ children }: Props) {
               scopes={scopes}
               showToolbarLevel={headerLevels === 2}
             />
+            <NoticeBanner />
           </header>
         </>
       )}
