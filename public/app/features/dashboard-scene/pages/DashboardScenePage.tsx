@@ -6,6 +6,7 @@ import { PageLayoutType } from '@grafana/data';
 import { locationService } from '@grafana/runtime';
 import { UrlSyncContextProvider } from '@grafana/scenes';
 import { Box } from '@grafana/ui';
+import { setHeaderNoticeDashboardDescription } from 'app/core/components/AppChrome/TopBar/headerNotice';
 import { Page } from 'app/core/components/Page/Page';
 import PageLoader from 'app/core/components/PageLoader/PageLoader';
 import { type GrafanaRouteComponentProps } from 'app/core/navigation/types';
@@ -102,6 +103,21 @@ export function DashboardScenePage({ route, queryParams, location }: Props) {
     queryParams.dashboardTemplateUid,
     queryParams.editTemplate,
   ]);
+
+  useEffect(() => {
+    if (!dashboard) {
+      setHeaderNoticeDashboardDescription(undefined);
+      return;
+    }
+
+    const publish = () => setHeaderNoticeDashboardDescription(dashboard.state.description);
+    publish();
+    const sub = dashboard.subscribeToState(publish);
+    return () => {
+      sub.unsubscribe();
+      setHeaderNoticeDashboardDescription(undefined);
+    };
+  }, [dashboard]);
 
   useEffect(() => {
     // This use effect corrects URL without refresh when navigating to the same dashboard
