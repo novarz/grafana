@@ -22,11 +22,11 @@ El 101 **funciona**. Pill entre Search y `+`, tests verdes, Light ↔ Dark. Ensa
 1. **Jira sucio mata el beat 1.** `what's assigned to me in Jira?` tiene que devolver **solo SDFD-1 y SDFD-2**. SDFD-3…28 sin asignar. SDFD-28 en Tareas por hacer, no En curso.
 2. **Nada a En curso en el 101.** El webhook no distingue sesiones. Transiciones Jira via API: nombres **To Do / In Progress / Done**, no “Tareas por hacer”.
 3. **No arranques Grafana en un tab de agente.** Los watchers mueren y el badge sigue en running. Tú, terminal de **login**: `yarn start` hasta “compiled successfully”, **después** `./bin/grafana server` o `make run`. Comprueba `curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3000/login` → 200. Al revés: “failed to load application files”.
-4. **Node no está en PATH** en shells no-login. nvm 24.11 **no está instalado** en esta máquina. Usa el Node de Cursor (`/Applications/Cursor.app/Contents/Resources/app/resources/helpers/node`, v24.18.1, entra en `engines`) + `.yarn/releases/yarn-4.17.1.cjs`. No uses el node de cursor-agent (v26, fuera de range).
+4. **Node:** nvm **24.11.0** está instalado (`~/.nvm`, default). Terminal de login: `node -v` → v24.11.0. Un tab de agente no-login puede seguir viendo el Node 24.18 de Cursor o el v26 de cursor-agent — no arranques webpack ahí.
 5. **Jest frío = 3–5 min.** Antes de sala: `yarn jest --watchAll=false` a un `*.test.tsx` cualquiera. En caliente ThemeToggle fue 4 s.
 6. **No hay iconos sun/moon** en Grafana. El pill es `RadioButtonGroup` Light/Dark (`adjust-circle` / `circle`). El prompt del plan **tiene que citar SDFD-1 / Figma** o Composer pone el icono de paleta al lado del avatar.
 7. **Paracaídas:** `demo/sdfd-1-backup` (no `fed-260`). No la abras hasta cortar el live.
-8. **No lances SDFD-2 de verdad en un ensayo.** El Cloud Agent abre PR y quema el beat. Autofix **Off**: las ramas `cursor/…` no respetan Create New Branch.
+8. **No lances SDFD-2 de verdad en un ensayo.** El Cloud Agent abre PR y quema el beat.
 
 ## Cloud (SDFD-2 a mano + webhook 201)
 
@@ -35,7 +35,7 @@ No hace falta cambiar `grafana/grafana` upstream. En **este** fork: skills y scr
 Checklist dashboard (novarz/grafana), no código:
 
 - Automation 201: el prompt de este archivo (Playwright headless, **no computer-use**, Node de `.nvmrc`, nunca `make run`, no subscribe a PR/CI).
-- Bugbot on, Autofix **Off**.
+- Bugbot on.
 - Security Reviewer on (PR opened + pushed). Custom instructions = las de Grafana de este archivo, no las de SDFD-28.
 - Cloud Agent usa Node **22** por defecto. `.nvmrc` es **24**. Webpack con 22 + “failed to load application files” es el fallo clásico. El prompt ya lo dice; no lo quites.
 - SDFD-2 (101) no arranca Grafana: solo rama + tests + PR. No le pidas screenshots.
@@ -52,7 +52,7 @@ Checklist dashboard (novarz/grafana), no código:
 - Paracaídas: `demo/sdfd-1-backup`. No la abras hasta cortar el live.
 - Jira: solo **SDFD-1 y SDFD-2** asignadas a ti. SDFD-3…28 sin asignar.
 - **Ninguna** story en En curso. El webhook `Tareas por hacer → En curso` (iniciador = tú) implementaría SDFD-1 y te quema el live.
-- Bugbot Autofix **Off** (si está On, un PR de SDFD-2 se autoparchea). No abras la pestaña de review.
+- No abras la pestaña de review.
 
 ## Guion (6 bloques)
 
@@ -130,7 +130,7 @@ Mismo Grafana en :3000. `main` otra vez limpio (el pill del 101 no está mergead
 ## Antes
 
 - Security Reviewer **on** en `novarz/grafana` (trigger PR opened + pushed). Custom instructions = las de Grafana (sanitize / sinks), no las de SDFD-28.
-- Bugbot **on**. Autofix **Off**. Las ramas del webhook son `cursor/…`: Create New Branch **no aplica**, Autofix pisa el PR y se come el comment.
+- Bugbot **on**.
 - Dependabot off / PRs de deps cerradas. Solo debe aparecer el PR del webhook.
 - Jira: **SDFD-28** asignada, estado **Tareas por hacer**. SDFD-1/2 no las toques (o ya hechas, sin En curso).
 - Prompt de la automation actualizado: Playwright headless, Node de `.nvmrc`, no computer-use.
@@ -157,7 +157,7 @@ Jest = comportamiento (dismiss, XSS). Playwright = dos fotos.
 
 Cuando abra el PR: Bugbot comenta (calidad / sticky / tests / a11y). Security Reviewer comenta vulns **de este diff**, o un top-level “no findings” si el agente sanitizó con `textUtil.sanitize`.
 
-No abras Autofix. No pidas “keep CI green” en el prompt (eso suscribe al implementer y tapa los comments).
+No pidas “keep CI green” en el prompt (eso suscribe al implementer y tapa los comments).
 
 ### 5. Cierre (~2 min)
 
@@ -179,7 +179,7 @@ Lo reutilizable es **reset + prompts**, no el merge.
 
 1. Cierra el PR de SDFD-28 y borra la rama `cursor/…`.
 2. SDFD-28 → **Tareas por hacer** (no En curso: eso dispara otra vez).
-3. `main` limpio. Autofix sigue Off. Security sigue on.
+3. `main` limpio. Security sigue on.
 
 Si el Cloud Agent sanitiza, Security puede salir limpio. El beat sigue siendo “ha corrido y ha dicho algo”. XSS de teatro = un diff **sin** `textUtil.sanitize`; el AC de SDFD-28 pide sanitize, así que un agente bueno estará limpio. No lo fuerces en el prompt.
 
