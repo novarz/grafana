@@ -74,9 +74,6 @@ public/css/*.min.css
 .vscode/
 !.vscode/launch.json
 .vs/
-# Live /create-rule from the 101. Everything else under .cursor is tracked so
-# local agents and Cloud Agents see the same skills + script.
-.cursor/rules/
 .devcontainer/
 .claude/
 

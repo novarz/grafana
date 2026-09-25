@@ -36,7 +36,7 @@ El 101 **funciona**. Pill entre Search y `+`, tests verdes, Light ↔ Dark. Ensa
 
 ## Cloud (SDFD-2 a mano + webhook 201)
 
-Repo = `novarz/grafana`. No hay remote `upstream` a grafana/grafana: no sincronices desde ahí. Skills y script van en `.cursor/` y se commitean. Cloud Agent los ve. Sigue ignorado solo `.cursor/rules/`.
+Repo = `novarz/grafana`. Todo `.cursor/` se commitea. Cloud Agent lo ve. El reset borra las rules del 101.
 
 Checklist dashboard (novarz/grafana), no código:
 
@@ -255,5 +255,5 @@ Each finding: severity, source → sink, why existing sanitize/auth does not blo
 
 - SDFD-1 pide pill Figma (entre search y +), no un icono de paleta. El prompt del plan tiene que citar el ticket.
 - El webhook no distingue 101 de 201: **cualquier** En curso con tu usuario implementa. Por eso SDFD-1 no se toca en el 101.
-- Track `.cursor/skills/` + `101-SCRIPT.md`. Ignora solo `.cursor/rules/` (el `/create-rule` del 101 no debe salir en git status ni en un PR). Bugbot se customiza en el dashboard.
+- Track `.cursor/` entero. El reset borra las rules del 101. Bugbot se customiza en el dashboard.
 - Dependabot vive en el `dependabot.yml` de Grafana. Si reaparece, cierra esas PRs; no las enseñes.
