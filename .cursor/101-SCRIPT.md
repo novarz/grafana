@@ -1,6 +1,6 @@
 # Script Cursor 101 + 201 (Grafana)
 
-Copia local. Tracker = **Jira SDFD** (Sergio Demo Space). Los prompts largos de automation y Security viven aquí.
+**Único talk track.** Tracker = **Jira SDFD**. Automation y Security van aquí. No uses los planes de Cursor ni Linear.
 
 **Otro agente, demo completa — pega esto:**
 
@@ -60,7 +60,7 @@ Checklist dashboard (novarz/grafana), no código:
 - **Ninguna** story en En curso. El webhook `Tareas por hacer → En curso` (iniciador = tú) implementaría SDFD-1 y te quema el live.
 - No abras la pestaña de review.
 
-## Guion (6 bloques)
+## Guion (5 bloques)
 
 ### 1. Jira (~1 min)
 
@@ -102,18 +102,13 @@ Modo Plan, razonamiento alto:
 Create a plan to implement SDFD-1. Add a Light/Dark pill in the top header between the search control and the + action, matching the Figma on the ticket. Call toggleTheme / changeTheme from app/core/services/theme. Do not refactor ThemeSelectorDrawer, command palette, or keybindings. Reuse existing t() keys. Include colocated unit tests. Do not run i18n-extract.
 ```
 
-Composer: construye el plan.
+Composer: construye el plan. Tests: la rule los exige; el skill dice cómo. No es un bloque aparte.
 
-### 4. Tests
-
-DI: por la regla, los tests entran solos. El skill dice cómo.
-`yarn jest --watchAll=false path/to/file`. Di si pasan o fallan.
-
-### 5. UI + Cloud Agent (no es un séptimo recuadro)
+### 4. UI + Cloud Agent
 
 Recarga localhost:3000. Light ↔ Dark.
 
-**Mientras** Composer o los tests, lanza Cloud Agent en SDFD-2 **desde Cursor**, no desde Jira. No te sientes a esperarlo.
+**Mientras** Composer implementa, lanza Cloud Agent en SDFD-2 **desde Cursor**, no desde Jira. No te sientes a esperarlo.
 
 ```
 Implement SDFD-2 on a new branch. Moving-average overlay in Explore Graph, toggle to the right of Lines/Bars/Points. Off = primary series only. On = dashed MA line alongside. Follow contribute/style-guides/testing.md and frontend-testing-strategy (in .cursor/skills). Use the Node version in .nvmrc for yarn/jest. Do not start webpack, make run, or grafana-server. Do not wait for review — open a PR when tests pass.
@@ -121,7 +116,7 @@ Implement SDFD-2 on a new branch. Moving-average overlay in Explore Graph, toggl
 
 Si Composer se alarga en SDFD-1: `git checkout demo/sdfd-1-backup`. “Esto ya está en una rama; lo dejo montado y seguimos.”
 
-### 6. Cierre (~1 min)
+### 5. Cierre (~1 min)
 
 Ticket → planificado, implementado, testeado, sin salir del editor. Regla, skill y Cloud Agent ya salieron.
 
