@@ -21,18 +21,17 @@ Los prompts entre ``` se pegan tal cual (inglés). El resto se dice en castellan
 
 ---
 
-# Lessons (ensayo 2026-09-25) — léelo antes de tocar nada
+# Lessons (ensayo 2026-09-25) — presentador
 
-El 101 **funciona**. Pill entre Search y `+`, tests verdes, Light ↔ Dark. Ensayo ~5 min de implementación; sala **18–22 min** si Grafana está caliente y Jira limpio. No implementes SDFD-1 en `main` antes de la sala. Reset después de cualquier ensayo.
+Lo que el agente tiene que cumplir está en `AGENTS.md` (arriba). Esto es **tuyo**: máquina, sala, timing.
 
-1. **Jira sucio mata el beat 1.** `what's assigned to me in Jira?` tiene que devolver **solo SDFD-1 y SDFD-2**. SDFD-3…28 sin asignar. SDFD-28 en Tareas por hacer, no En curso.
-2. **Nada a En curso en el 101.** El webhook no distingue sesiones. Transiciones Jira via API: nombres **To Do / In Progress / Done**, no “Tareas por hacer”.
-3. **No arranques Grafana en un tab de agente.** Los watchers mueren y el badge sigue en running. Tú, terminal de **login**: `yarn start` hasta “compiled successfully”, **después** `./bin/grafana server` o `make run`. Comprueba `curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3000/login` → 200. Al revés: “failed to load application files”.
-4. **Node:** nvm **24.11.0** está instalado (`~/.nvm`, default). Terminal de login: `node -v` → v24.11.0. Un tab de agente no-login puede seguir viendo el Node 24.18 de Cursor o el v26 de cursor-agent — no arranques webpack ahí.
-5. **Jest frío = 3–5 min.** Antes de sala: `yarn jest --watchAll=false` a un `*.test.tsx` cualquiera. En caliente ThemeToggle fue 4 s.
-6. **No hay iconos sun/moon** en Grafana. El pill es `RadioButtonGroup` Light/Dark (`adjust-circle` / `circle`). El prompt del plan **tiene que citar SDFD-1 / Figma** o Composer pone el icono de paleta al lado del avatar.
-7. **Paracaídas:** `demo/sdfd-1-backup` (no `fed-260`). No la abras hasta cortar el live.
-8. **No lances SDFD-2 de verdad en un ensayo.** El Cloud Agent abre PR y quema el beat.
+El 101 **funciona**. Pill entre Search y `+`, tests verdes, Light ↔ Dark. Ensayo ~5 min de implementación; sala **18–22 min** si Grafana está caliente y Jira limpio. Reset después de cualquier ensayo.
+
+1. **Jira sucio mata el beat 1.** Antes de sala: solo SDFD-1 y SDFD-2 asignadas. SDFD-28 en Tareas por hacer.
+2. Grafana caliente **en tu terminal de login**. `yarn start` hasta compiled, luego backend. `curl` login → 200.
+3. **Node:** login shell `node -v` → v24.11.0. No arranques webpack desde un tab de agente.
+4. **Jest frío = 3–5 min.** Precalienta una vez. En caliente ThemeToggle fue 4 s.
+5. **No lances SDFD-2 de verdad en un ensayo.** Quema el beat.
 
 ## Cloud (SDFD-2 a mano + webhook 201)
 

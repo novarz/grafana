@@ -4,6 +4,18 @@
 
 This file provides guidance to AI agents when working with code in the Grafana repository.
 
+## Cursor 101/201 demo (`novarz/grafana`)
+
+Talk track for the presenter: `.cursor/101-SCRIPT.md`. Reset: skill `reset-demo` / `bash .cursor/reset-demo.sh` (pins `main` to `origin/demo/start`).
+
+- Tracker = Jira SDFD only. Do not use Linear.
+- Do not implement SDFD-1, SDFD-2, or SDFD-28 on `main`. Use a demo branch. Restore point is `demo/start`, not `demo/sdfd-1-backup`.
+- Do not transition any SDFD issue to In Progress / En curso unless the user is running the 201 live (SDFD-28 only). Jira API names: **To Do**, **In Progress**, **Done**.
+- Assigned to the presenter must be only SDFD-1 and SDFD-2, both To Do. SDFD-28 unassigned, To Do. Never fire the webhook in a 101.
+- Do not start webpack, `yarn start`, `make run`, or grafana-server from an agent terminal. The human starts Grafana in a login shell. Node for that is nvm **24.11.0**.
+- SDFD-1 pill is `RadioButtonGroup` Light/Dark (`adjust-circle` / `circle`). Grafana has no sun/moon icons. Do not put a palette icon by the avatar.
+- Do not check out `demo/sdfd-1-backup` unless the user cuts the live 101.
+
 **Directory-scoped agent files exist for specialized areas — read them when working in those directories:**
 
 - `docs/AGENTS.md` — Documentation style guide (for work under `docs/`)
