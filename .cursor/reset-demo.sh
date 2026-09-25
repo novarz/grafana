@@ -68,7 +68,10 @@ run rm -f \
   public/app/core/components/AppChrome/TopBar/ThemeToggle.tsx \
   public/app/core/components/AppChrome/TopBar/ThemeToggle.test.tsx \
   WEBHOOK_SMOKE.txt
-run rm -rf docs/demo-screenshots .cursor/rules
+run rm -rf docs/demo-screenshots
+# .cursor/rules is tracked; rm -rf alone leaves staged or committed files as deletions.
+run git rm -r -f --ignore-unmatch -- .cursor/rules || true
+run rm -rf .cursor/rules
 run mkdir -p .cursor/rules
 run rm -rf .cursor/skills/colocated-react-tests
 
