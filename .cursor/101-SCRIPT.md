@@ -2,6 +2,12 @@
 
 Copia local. Tracker = **Jira SDFD** (Sergio Demo Space). Los prompts largos de automation y Security viven aquí.
 
+**Otro agente, demo completa — pega esto:**
+
+```
+You are on novarz/grafana, branch main (has .cursor/101-SCRIPT.md). Follow that file. First run skill reset-demo (bash .cursor/reset-demo.sh then Jira MCP: only SDFD-1 and SDFD-2 assigned, all To Do, never In Progress). Then run 101, then 201. Do not implement SDFD-1 on main before the room — work on a demo branch. Do not start Grafana in an agent tab. Prompts in English, talk track Spanish. Tracker = Jira SDFD only.
+```
+
 Dos sesiones, mismo repo (`novarz/grafana`). No mezclar beats.
 
 Los prompts entre ``` se pegan tal cual (inglés). El resto se dice en castellano.
@@ -168,6 +174,14 @@ No pidas “keep CI green” en el prompt (eso suscribe al implementer y tapa lo
 # Reset
 
 Lo reutilizable es **reset + prompts**, no el merge.
+
+Otro agente / antes de repetir 101+201:
+
+```bash
+bash .cursor/reset-demo.sh
+```
+
+Luego Jira (skill `reset-demo`): solo SDFD-1 y SDFD-2 asignadas, todas To Do, SDFD-28 sin asignar. El script no toca Jira.
 
 ## Después del 101 / antes de repetirlo
 
