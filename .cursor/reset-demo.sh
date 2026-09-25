@@ -57,9 +57,16 @@ DEMO_PATHS=(
   public/app/core/components/AppChrome/TopBar/useChromeHeaderHeight.ts
 )
 
+# Restore from main, not HEAD. Demo/parachute commits keep ThemeToggle imports
+# in SingleTopBar; restoring those then deleting ThemeToggle breaks webpack.
+if ! git rev-parse --verify --quiet main >/dev/null; then
+  echo "main not found — cannot restore demo files from the canonical branch" >&2
+  exit 1
+fi
+
 for p in "${DEMO_PATHS[@]}"; do
-  if git ls-files --error-unmatch "$p" >/dev/null 2>&1; then
-    run git restore --worktree --staged -- "$p" || true
+  if git cat-file -e "main:${p}" 2>/dev/null; then
+    run git restore --source=main --worktree --staged -- "$p" || true
   else
     run rm -f "$p"
   fi
