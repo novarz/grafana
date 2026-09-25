@@ -36,7 +36,7 @@ El 101 **funciona**. Pill entre Search y `+`, tests verdes, Light ↔ Dark. Ensa
 
 ## Cloud (SDFD-2 a mano + webhook 201)
 
-No hace falta cambiar `grafana/grafana` upstream. En **este** fork: skills y script van en `.cursor/` y se commitean. Cloud Agent los ve. Sigue ignorado solo `.cursor/rules/`.
+Repo = `novarz/grafana`. No hay remote `upstream` a grafana/grafana: no sincronices desde ahí. Skills y script van en `.cursor/` y se commitean. Cloud Agent los ve. Sigue ignorado solo `.cursor/rules/`.
 
 Checklist dashboard (novarz/grafana), no código:
 

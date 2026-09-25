@@ -9,7 +9,6 @@ cd "$ROOT"
 KEEP_PR_BRANCH="${KEEP_PR_BRANCH:-cursor/track-cursor-skills-for-cloud-agents}"
 CLOSE_PRS=1
 DRY_RUN=0
-# gh defaults to grafana/grafana when `upstream` exists. Always hit the fork.
 export GH_REPO="${GH_REPO:-novarz/grafana}"
 
 for arg in "$@"; do
