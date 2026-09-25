@@ -19,7 +19,7 @@ bash .cursor/reset-demo.sh
 
 `--dry-run` to print. `--no-close-prs` if you must keep an open `cursor/*` PR.
 
-The script restores header/demo files, deletes live `/create-rule` output (`.cursor/rules/`, `colocated-react-tests`), and closes leftover `cursor/*` PRs on **novarz/grafana**. Dependabot is disabled on this repo.
+The script restores header/demo files, deletes live `/create-rule` rules, deletes `colocated-react-tests`, and closes leftover `cursor/*` PRs on **novarz/grafana**. Dependabot is disabled on this repo.
 
 Canonical branch is **main**. The kit (this skill, `.cursor/101-SCRIPT.md`, testing skills) lives there.
 
