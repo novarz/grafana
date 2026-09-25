@@ -24,18 +24,37 @@ export function formatNoticeHtml(message: string): string {
   return textUtil.sanitize(renderMarkdown(message, { breaks: true, noSanitize: true }));
 }
 
-export function readDismissedNotice(): string | null {
+export function readDismissedNotices(): string[] {
   try {
-    return sessionStorage.getItem(DISMISS_STORAGE_KEY);
+    const raw = sessionStorage.getItem(DISMISS_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+    return parseStoredDismissals(raw);
   } catch {
-    return null;
+    return [];
   }
 }
 
 export function rememberDismissedNotice(message: string) {
   try {
-    sessionStorage.setItem(DISMISS_STORAGE_KEY, message);
+    const dismissed = new Set(readDismissedNotices());
+    dismissed.add(message);
+    sessionStorage.setItem(DISMISS_STORAGE_KEY, JSON.stringify([...dismissed]));
   } catch {
     // Session storage can be blocked; the in-memory dismiss still hides the banner.
   }
+}
+
+/** Earlier builds stored one plain message; current builds store a JSON array. */
+function parseStoredDismissals(raw: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item): item is string => typeof item === 'string');
+    }
+  } catch {
+    // Not JSON, so the stored value is the previous single-message format.
+  }
+  return [raw];
 }

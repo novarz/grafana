@@ -7,7 +7,7 @@ import { t } from '@grafana/i18n';
 import { Icon, useStyles2 } from '@grafana/ui';
 import { getDashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
 
-import { formatNoticeHtml, readDismissedNotice, rememberDismissedNotice, resolveHeaderNotice } from './headerNotice';
+import { formatNoticeHtml, readDismissedNotices, rememberDismissedNotice, resolveHeaderNotice } from './headerNotice';
 
 interface Props {
   onHeightChange?: (height: number) => void;
@@ -19,9 +19,11 @@ export function HeaderNoticeBanner({ onHeightChange }: Props) {
   const dashboardDescription = useDashboardDescription();
   const noticeParam = new URLSearchParams(location.search).get('notice');
   const message = resolveHeaderNotice(noticeParam, dashboardDescription);
-  const [dismissedMessage, setDismissedMessage] = useState<string | null>(() => readDismissedNotice());
+  const [dismissedMessages, setDismissedMessages] = useState<ReadonlySet<string>>(
+    () => new Set(readDismissedNotices())
+  );
   const bannerRef = useRef<HTMLDivElement>(null);
-  const visible = Boolean(message) && dismissedMessage !== message;
+  const visible = message !== undefined && !dismissedMessages.has(message);
   const html = visible && message ? formatNoticeHtml(message) : '';
 
   useLayoutEffect(() => {
@@ -50,7 +52,11 @@ export function HeaderNoticeBanner({ onHeightChange }: Props) {
 
   const dismiss = () => {
     rememberDismissedNotice(message);
-    setDismissedMessage(message);
+    setDismissedMessages((current) => {
+      const next = new Set(current);
+      next.add(message);
+      return next;
+    });
   };
 
   return (
@@ -82,9 +88,7 @@ export function HeaderNoticeBanner({ onHeightChange }: Props) {
 
 function useDashboardDescription() {
   const location = useLocation();
-  const [description, setDescription] = useState<string | undefined>(() =>
-    readDashboardDescription(location.pathname)
-  );
+  const [description, setDescription] = useState<string | undefined>(() => readDashboardDescription(location.pathname));
 
   useEffect(() => {
     const read = () => setDescription(readDashboardDescription(location.pathname));

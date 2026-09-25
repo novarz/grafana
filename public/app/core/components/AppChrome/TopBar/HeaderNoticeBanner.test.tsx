@@ -57,6 +57,42 @@ describe('HeaderNoticeBanner', () => {
     expect(screen.queryByText('From dashboard')).not.toBeInTheDocument();
   });
 
+  it('keeps every dismissed notice hidden after another notice is dismissed', async () => {
+    const { user, unmount } = render(<HeaderNoticeBanner />, {
+      historyOptions: { initialEntries: ['/?notice=First'] },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Dismiss notice' }));
+
+    act(() => {
+      locationService.push('/?notice=Second');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: 'Notice' })).toHaveTextContent('Second');
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Dismiss notice' }));
+
+    act(() => {
+      locationService.push('/?notice=First');
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Notice' })).not.toBeInTheDocument();
+    });
+
+    unmount();
+    const remounted = render(<HeaderNoticeBanner />, { historyOptions: { initialEntries: ['/?notice=First'] } });
+
+    expect(screen.queryByRole('region', { name: 'Notice' })).not.toBeInTheDocument();
+
+    remounted.unmount();
+    render(<HeaderNoticeBanner />, { historyOptions: { initialEntries: ['/?notice=Third'] } });
+
+    expect(screen.getByRole('region', { name: 'Notice' })).toHaveTextContent('Third');
+  });
+
   it('hides the banner on click and keeps it dismissed for the session', async () => {
     const { user, unmount } = render(<HeaderNoticeBanner />, {
       historyOptions: { initialEntries: ['/?notice=Hold'] },
