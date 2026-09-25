@@ -19,9 +19,19 @@ bash .cursor/reset-demo.sh
 
 `--dry-run` to print. `--no-close-prs` if you must keep an open `cursor/*` PR.
 
-The script restores header/demo files, deletes live `/create-rule` rules, deletes `colocated-react-tests`, and closes leftover `cursor/*` PRs on **novarz/grafana**. Dependabot is disabled on this repo.
+The script:
 
-Canonical branch is **main**. The kit (this skill, `.cursor/101-SCRIPT.md`, testing skills) lives there.
+- pins local `main` to **`origin/demo/start`** (frozen clean demo). Not `origin/main` — that is wrong after an accidental SDFD merge.
+- `--force-push-main` also resets GitHub `main` to that pin
+- `--to-main` pins to `origin/main` after you have moved `demo/start`
+- `git clean` untracked pill/banner/MA files under AppChrome and Explore Graph
+- deletes live `/create-rule` files and any skill that is not `add-e2e-selectors`, `frontend-testing-strategy`, `panel-testing-strategy`, `reset-demo`
+- closes leftover `cursor/*` PRs on **novarz/grafana**
+- leaves `demo/sdfd-1-backup` alone (that is the live parachute, not the clean start)
+
+After kit-only merges to main, slide the pin: `git push origin origin/main:demo/start`
+
+Does not touch Jira.
 
 ## 2. Jira (MCP, required)
 
@@ -37,7 +47,7 @@ Workflow transition names are English: **To Do**, **In Progress**, **Done**. UI 
 
 ## 3. Report
 
-- git: clean of ThemeToggle / notice banner / live rules
+- git: on `main`, no ThemeToggle / notice banner / live rules / extra skills
 - PRs: which `cursor/*` PRs you closed
 - Jira: keys assigned + statuses
 - Grafana: `curl` login status (200 or tell the human to start it)

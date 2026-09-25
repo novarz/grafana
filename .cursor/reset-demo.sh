@@ -6,23 +6,37 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-KEEP_PR_BRANCH="${KEEP_PR_BRANCH:-cursor/track-cursor-skills-for-cloud-agents}"
 CLOSE_PRS=1
 DRY_RUN=0
+FORCE_PUSH_MAIN=0
+# Frozen clean start. origin/main is wrong after an accidental SDFD merge.
+PIN_REF="${DEMO_BASELINE:-origin/demo/start}"
 export GH_REPO="${GH_REPO:-novarz/grafana}"
+
+KEEP_SKILLS=(
+  add-e2e-selectors
+  frontend-testing-strategy
+  panel-testing-strategy
+  reset-demo
+)
 
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=1 ;;
     --no-close-prs) CLOSE_PRS=0 ;;
-    --keep-pr-branch=*) KEEP_PR_BRANCH="${arg#*=}" ;;
+    --to-main) PIN_REF=origin/main ;;
+    --force-push-main) FORCE_PUSH_MAIN=1 ;;
     -h|--help)
       cat <<'EOF'
-Usage: .cursor/reset-demo.sh [--dry-run] [--no-close-prs]
+Usage: .cursor/reset-demo.sh [--dry-run] [--no-close-prs] [--to-main] [--force-push-main]
 
-Restores demo source files, wipes live /create-rule artifacts, closes
-cursor/* demo PRs (except KEEP_PR_BRANCH). Does not start Grafana.
-Does not touch Jira (use the reset-demo skill).
+Pins local main to origin/demo/start (clean demo, no SDFD-1/2/28).
+--to-main            pin to origin/main instead (after you moved demo/start)
+--force-push-main    also reset GitHub main to that pin (undo accidental merge)
+
+Wipes live /create-rule and /create-skill output, closes leftover cursor/* PRs.
+Does not start Grafana. Does not touch Jira. Leaves demo/sdfd-1-backup.
+After kit-only updates on main: git push origin origin/main:demo/start
 EOF
       exit 0
       ;;
@@ -43,26 +57,17 @@ run() {
   fi
 }
 
-echo "== git =="
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "working tree dirty — restoring known demo paths only, not git reset --hard"
+echo "== pin ${PIN_REF} =="
+run git fetch origin main demo/start
+if ! git rev-parse --verify "$PIN_REF" >/dev/null 2>&1; then
+  echo "$PIN_REF missing — falling back to origin/main" >&2
+  PIN_REF=origin/main
 fi
-
-DEMO_PATHS=(
-  public/app/core/components/AppChrome/TopBar/SingleTopBar.tsx
-  public/app/core/components/AppChrome/TopBar/ThemeToggle.tsx
-  public/app/core/components/AppChrome/TopBar/ThemeToggle.test.tsx
-  public/app/core/components/AppChrome/AppChrome.tsx
-  public/app/core/components/AppChrome/TopBar/useChromeHeaderHeight.ts
-)
-
-for p in "${DEMO_PATHS[@]}"; do
-  if git ls-files --error-unmatch "$p" >/dev/null 2>&1; then
-    run git restore --worktree --staged -- "$p" || true
-  else
-    run rm -f "$p"
-  fi
-done
+echo "pin to $PIN_REF $(git rev-parse --short "$PIN_REF")"
+run git checkout --force -B main "$PIN_REF"
+run git clean -fd -- \
+  public/app/core/components/AppChrome \
+  public/app/features/explore/Graph
 
 run rm -f \
   public/app/core/components/AppChrome/TopBar/ThemeToggle.tsx \
@@ -70,7 +75,25 @@ run rm -f \
   WEBHOOK_SMOKE.txt
 run rm -rf docs/demo-screenshots .cursor/rules
 run mkdir -p .cursor/rules
-run rm -rf .cursor/skills/colocated-react-tests
+
+echo "== wipe live skills (keep tracked kit) =="
+if [[ -d .cursor/skills ]]; then
+  for dir in .cursor/skills/*/; do
+    [[ -d "$dir" ]] || continue
+    name="$(basename "$dir")"
+    keep=0
+    for k in "${KEEP_SKILLS[@]}"; do
+      if [[ "$name" == "$k" ]]; then
+        keep=1
+        break
+      fi
+    done
+    if [[ "$keep" -eq 0 ]]; then
+      echo "remove live skill $name"
+      run rm -rf "$dir"
+    fi
+  done
+fi
 
 echo "== github cursor/* PRs =="
 if [[ "$CLOSE_PRS" -eq 1 ]]; then
@@ -79,15 +102,16 @@ if [[ "$CLOSE_PRS" -eq 1 ]]; then
   else
     while IFS=$'\t' read -r num head; do
       [[ -z "${num:-}" ]] && continue
-      if [[ "$head" == "$KEEP_PR_BRANCH" ]]; then
-        echo "keep PR #$num ($head)"
-        continue
-      fi
       echo "close PR #$num ($head)"
       run gh pr close "$num" --repo novarz/grafana --comment "Demo reset — re-run 101/201 from a clean slate." || true
       run git push origin --delete "$head" || true
     done < <(gh pr list --repo novarz/grafana --state open --limit 50 --json number,headRefName --jq '.[] | select(.headRefName|startswith("cursor/")) | [.number,.headRefName] | @tsv')
   fi
+fi
+
+if [[ "$FORCE_PUSH_MAIN" -eq 1 ]]; then
+  echo "== force-push GitHub main to $PIN_REF =="
+  run git push --force-with-lease origin main
 fi
 
 echo "== grafana =="
