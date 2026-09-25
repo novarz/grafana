@@ -5,10 +5,10 @@ Copia local. Tracker = **Jira SDFD** (Sergio Demo Space). Los prompts largos de 
 **Otro agente, demo completa — pega esto:**
 
 ```
-You are on novarz/grafana-demo, branch main (has .cursor/101-SCRIPT.md). Follow that file. First run skill reset-demo (bash .cursor/reset-demo.sh then Jira MCP: only SDFD-1 and SDFD-2 assigned, all To Do, never In Progress). Then run 101, then 201. Do not implement SDFD-1 on main before the room — work on a demo branch. Do not start Grafana in an agent tab. Prompts in English, talk track Spanish. Tracker = Jira SDFD only.
+You are on novarz/grafana, branch main (has .cursor/101-SCRIPT.md). Follow that file. First run skill reset-demo (bash .cursor/reset-demo.sh then Jira MCP: only SDFD-1 and SDFD-2 assigned, all To Do, never In Progress). Then run 101, then 201. Do not implement SDFD-1 on main before the room — work on a demo branch. Do not start Grafana in an agent tab. Prompts in English, talk track Spanish. Tracker = Jira SDFD only.
 ```
 
-Dos sesiones, mismo repo (`novarz/grafana-demo`). No mezclar beats.
+Dos sesiones, mismo repo (`novarz/grafana`). No mezclar beats.
 
 Los prompts entre ``` se pegan tal cual (inglés). El resto se dice en castellano.
 
@@ -36,9 +36,9 @@ El 101 **funciona**. Pill entre Search y `+`, tests verdes, Light ↔ Dark. Ensa
 
 ## Cloud (SDFD-2 a mano + webhook 201)
 
-Repo = `novarz/grafana-demo`. No hay remote `upstream` a grafana/grafana: no sincronices desde ahí. Skills y script van en `.cursor/` y se commitean. Cloud Agent los ve. Sigue ignorado solo `.cursor/rules/`.
+Repo = `novarz/grafana`. No hay remote `upstream` a grafana/grafana: no sincronices desde ahí. Skills y script van en `.cursor/` y se commitean. Cloud Agent los ve. Sigue ignorado solo `.cursor/rules/`.
 
-Checklist dashboard (novarz/grafana-demo), no código:
+Checklist dashboard (novarz/grafana), no código:
 
 - Automation 201: el prompt de este archivo (Playwright headless, **no computer-use**, Node de `.nvmrc`, nunca `make run`, no subscribe a PR/CI).
 - Bugbot on.
@@ -135,7 +135,7 @@ Mismo Grafana en :3000. `main` otra vez limpio (el pill del 101 no está mergead
 
 ## Antes
 
-- Security Reviewer **on** en `novarz/grafana-demo` (trigger PR opened + pushed). Custom instructions = las de Grafana (sanitize / sinks), no las de SDFD-28.
+- Security Reviewer **on** en `novarz/grafana` (trigger PR opened + pushed). Custom instructions = las de Grafana (sanitize / sinks), no las de SDFD-28.
 - Bugbot **on**.
 - Dependabot off / PRs de deps cerradas. Solo debe aparecer el PR del webhook.
 - Jira: **SDFD-28** asignada, estado **Tareas por hacer**. SDFD-1/2 no las toques (o ya hechas, sin En curso).
@@ -155,7 +155,7 @@ Abre SDFD-28. **Tú** la pasas a En curso. (Si la transiciona otro, el `If inici
 
 ### 3. Qué está haciendo (~3 min)
 
-Cloud Agent en `novarz/grafana-demo` / `main`. Banner HTML, tests colocados, PNG con **un** script Playwright (login `admin`/`admin`, skip password). Si la página no carga: para y reporta. No Grafana restart, no incognito, no Browser subagent.
+Cloud Agent en `novarz/grafana` / `main`. Banner HTML, tests colocados, PNG con **un** script Playwright (login `admin`/`admin`, skip password). Si la página no carga: para y reporta. No Grafana restart, no incognito, no Browser subagent.
 
 Jest = comportamiento (dismiss, XSS). Playwright = dos fotos.
 
@@ -209,7 +209,7 @@ This webhook is already filtered in Jira (SDFD, Tareas por hacer → En curso, i
 
 Do not call Jira to re-fetch the issue unless a field is empty. Use summary + description as the spec.
 
-Then triage, implement on novarz/grafana-demo, and open a PR. Base branch is main. Never use make run.
+Then triage, implement on novarz/grafana, and open a PR. Base branch is main. Never use make run.
 
 1. Comment a short triage on the Jira issue. Then implement on a new branch from main. Follow existing Grafana frontend patterns. Colocate tests.
 
@@ -233,7 +233,7 @@ If blocked, comment on the Jira issue and stop.
 ## Security Reviewer (custom instructions, todo el repo)
 
 ```
-You are reviewing PRs on novarz/grafana-demo. Only report issues introduced or made exploitable by THIS diff. Do not audit the rest of Grafana.
+You are reviewing PRs on novarz/grafana. Only report issues introduced or made exploitable by THIS diff. Do not audit the rest of Grafana.
 
 Grafana XSS / injection boundary: textUtil.sanitize or textUtil.sanitizeXSS before any HTML sink; textUtil.sanitizeUrl for hrefs. Flag when request, dashboard, plugin, or operator input reaches a sink without that boundary.
 
