@@ -56,7 +56,7 @@ import { PROVISIONING_PREVIEW_URL } from 'app/features/provisioning/constants';
 import { type RecoverToNewBranch } from 'app/features/provisioning/types';
 import { VariablesChanged } from 'app/features/variables/types';
 import { type DashboardDTO, type DashboardMeta, type SaveDashboardResponseDTO } from 'app/types/dashboard';
-import { DashboardDiscardedEvent, ShowConfirmModalEvent } from 'app/types/events';
+import { DashboardDescriptionChangedEvent, DashboardDiscardedEvent, ShowConfirmModalEvent } from 'app/types/events';
 
 import {
   AnnoKeyManagerAllowsEdits,
@@ -284,9 +284,21 @@ export class DashboardScene extends SceneObjectBase<DashboardSceneState> impleme
     // @ts-expect-error
     getDashboardSrv().setCurrent(oldDashboardWrapper);
 
+    const publishDescription = (description?: string) => {
+      appEvents.publish(new DashboardDescriptionChangedEvent({ description }));
+    };
+    publishDescription(this.state.description);
+    const descriptionSub = this.subscribeToState((next, prev) => {
+      if (next.description !== prev.description) {
+        publishDescription(next.description);
+      }
+    });
+
     const destroyMutationClient = createMutationClient(this, 'dashboard');
 
     return () => {
+      descriptionSub.unsubscribe();
+      publishDescription(undefined);
       destroyMutationClient();
       window.__grafanaSceneContext = prevSceneContext;
       clearKeyBindings();

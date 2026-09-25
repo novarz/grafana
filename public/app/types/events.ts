@@ -180,3 +180,12 @@ export class PanelEditExitedEvent extends BusEventWithPayload<number> {
 export class PanelEditNextFeedbackEvent extends BusEventBase {
   static type = 'panel-edit-next-feedback';
 }
+
+export interface DashboardDescriptionChangedPayload {
+  description?: string;
+}
+
+/** Fired when the active dashboard description changes, including when the dashboard is left. */
+export class DashboardDescriptionChangedEvent extends BusEventWithPayload<DashboardDescriptionChangedPayload> {
+  static type = 'dashboard-description-changed';
+}

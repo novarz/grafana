@@ -31,6 +31,7 @@ import { useFullscreenWorkspace } from './FullscreenWorkspace/useFullscreenWorks
 import { MegaMenu, MENU_WIDTH } from './MegaMenu/MegaMenu';
 import { useMegaMenuFocusHelper } from './MegaMenu/utils';
 import { ReturnToPrevious } from './ReturnToPrevious/ReturnToPrevious';
+import { HeaderNoticeBanner } from './TopBar/HeaderNoticeBanner';
 import { SingleTopBar } from './TopBar/SingleTopBar';
 import { getChromeHeaderLevelHeight, useChromeHeaderLevels } from './TopBar/useChromeHeaderHeight';
 
@@ -79,7 +80,14 @@ export function AppChrome({ children }: Props) {
   );
 
   const headerLevels = useChromeHeaderLevels();
-  const styles = useStyles2(getStyles, headerLevels, getChromeHeaderLevelHeight(), visualRefreshEnabled);
+  const [noticeBannerHeight, setNoticeBannerHeight] = useState(0);
+  const styles = useStyles2(
+    getStyles,
+    headerLevels,
+    getChromeHeaderLevelHeight(),
+    visualRefreshEnabled,
+    noticeBannerHeight
+  );
   const contentSizeStyles = useStyles2(getContentSizeStyles, extensionSidebarWidth);
   const dragStyles = useStyles2(getDragStyles);
   const isSmallScreen = !useMediaQueryMinWidth('sm');
@@ -170,6 +178,7 @@ export function AppChrome({ children }: Props) {
               scopes={scopes}
               showToolbarLevel={headerLevels === 2}
             />
+            <HeaderNoticeBanner onHeightChange={setNoticeBannerHeight} />
           </header>
         </>
       )}
@@ -271,13 +280,20 @@ function useResponsiveDockedMegaMenu(chrome: AppChromeService) {
   }, [isLargeScreen, chrome, dockedMenuLocalStorageState]);
 }
 
-const getStyles = (theme: GrafanaTheme2, headerLevels: number, headerHeight: number, visualRefreshEnabled: boolean) => {
+const getStyles = (
+  theme: GrafanaTheme2,
+  headerLevels: number,
+  headerHeight: number,
+  visualRefreshEnabled: boolean,
+  noticeBannerHeight = 0
+) => {
+  const chromeOffset = headerLevels * headerHeight + noticeBannerHeight;
   return {
     content: css({
       label: 'page-content',
       display: 'flex',
       flexDirection: 'column',
-      paddingTop: headerLevels * headerHeight,
+      paddingTop: chromeOffset,
       flexGrow: 1,
       height: 'auto',
     }),
@@ -305,7 +321,7 @@ const getStyles = (theme: GrafanaTheme2, headerLevels: number, headerHeight: num
     }),
     scopesDashboardsContainer: css({
       position: 'fixed',
-      height: `calc(100% - ${headerHeight}px)`,
+      height: `calc(100% - ${headerHeight + noticeBannerHeight}px)`,
       zIndex: 1,
     }),
     scopesDashboardsContainerDocked: css(
@@ -370,14 +386,14 @@ const getStyles = (theme: GrafanaTheme2, headerLevels: number, headerHeight: num
       // the `Resizeable` component overrides the needed `position` and `height`
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       position: 'fixed !important' as 'fixed',
-      top: headerHeight,
+      top: headerHeight + noticeBannerHeight,
       bottom: 0,
       zIndex: theme.zIndex.navbarFixed + 1,
       right: 0,
     }),
     sidebarContainerFloating: css({
       position: 'fixed',
-      top: headerLevels * headerHeight,
+      top: chromeOffset,
       bottom: 0,
       left: 0,
       right: 0,
