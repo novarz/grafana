@@ -64,7 +64,9 @@ if ! git rev-parse --verify "$PIN_REF" >/dev/null 2>&1; then
   PIN_REF=origin/main
 fi
 echo "pin to $PIN_REF $(git rev-parse --short "$PIN_REF")"
-run git checkout --force -B main "$PIN_REF"
+# -B from a remote-tracking ref would retarget main's upstream; keep origin/main.
+run git checkout --force --no-track -B main "$PIN_REF"
+run git branch --set-upstream-to=origin/main
 run git clean -fd -- \
   public/app/core/components/AppChrome \
   public/app/features/explore/Graph
