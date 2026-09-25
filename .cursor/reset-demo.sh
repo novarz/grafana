@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reset novarz/grafana-demo to a clean 101+201 starting state (git + GitHub).
+# Reset novarz/grafana to a clean 101+201 starting state (git + GitHub).
 # Jira is not done here — the reset-demo skill / next agent does that via MCP.
 set -euo pipefail
 
@@ -9,7 +9,7 @@ cd "$ROOT"
 KEEP_PR_BRANCH="${KEEP_PR_BRANCH:-cursor/track-cursor-skills-for-cloud-agents}"
 CLOSE_PRS=1
 DRY_RUN=0
-export GH_REPO="${GH_REPO:-novarz/grafana-demo}"
+export GH_REPO="${GH_REPO:-novarz/grafana}"
 
 for arg in "$@"; do
   case "$arg" in
@@ -84,9 +84,9 @@ if [[ "$CLOSE_PRS" -eq 1 ]]; then
         continue
       fi
       echo "close PR #$num ($head)"
-      run gh pr close "$num" --repo novarz/grafana-demo --comment "Demo reset — re-run 101/201 from a clean slate." || true
+      run gh pr close "$num" --repo novarz/grafana --comment "Demo reset — re-run 101/201 from a clean slate." || true
       run git push origin --delete "$head" || true
-    done < <(gh pr list --repo novarz/grafana-demo --state open --limit 50 --json number,headRefName --jq '.[] | select(.headRefName|startswith("cursor/")) | [.number,.headRefName] | @tsv')
+    done < <(gh pr list --repo novarz/grafana --state open --limit 50 --json number,headRefName --jq '.[] | select(.headRefName|startswith("cursor/")) | [.number,.headRefName] | @tsv')
   fi
 fi
 
