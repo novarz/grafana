@@ -5,9 +5,7 @@ import { useLocation } from 'react-router-dom-v5-compat';
 import { type GrafanaTheme2 } from '@grafana/data';
 import { t } from '@grafana/i18n';
 import { Icon, useStyles2 } from '@grafana/ui';
-import { appEvents } from 'app/core/app_events';
 import { getDashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
-import { DashboardDescriptionChangedEvent } from 'app/types/events';
 
 import { formatNoticeHtml, readDismissedNotice, rememberDismissedNotice, resolveHeaderNotice } from './headerNotice';
 
@@ -62,12 +60,6 @@ export function HeaderNoticeBanner({ onHeightChange }: Props) {
       role="region"
       aria-label={t('app-chrome.header-notice.label', 'Notice')}
       data-testid="header-notice-banner"
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          dismiss();
-        }
-      }}
     >
       <div className={styles.message} dangerouslySetInnerHTML={{ __html: html }} />
       <button
@@ -75,6 +67,12 @@ export function HeaderNoticeBanner({ onHeightChange }: Props) {
         className={styles.dismiss}
         aria-label={t('app-chrome.header-notice.dismiss', 'Dismiss notice')}
         onClick={dismiss}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            dismiss();
+          }
+        }}
       >
         <Icon name="times" />
       </button>
@@ -83,19 +81,32 @@ export function HeaderNoticeBanner({ onHeightChange }: Props) {
 }
 
 function useDashboardDescription() {
-  const [description, setDescription] = useState<string | undefined>(
-    () => getDashboardSrv().getCurrent()?.description
+  const location = useLocation();
+  const [description, setDescription] = useState<string | undefined>(() =>
+    readDashboardDescription(location.pathname)
   );
 
   useEffect(() => {
-    setDescription(getDashboardSrv().getCurrent()?.description);
-    const sub = appEvents.subscribe(DashboardDescriptionChangedEvent, (event) => {
-      setDescription(event.payload.description);
-    });
-    return () => sub.unsubscribe();
-  }, []);
+    const read = () => setDescription(readDashboardDescription(location.pathname));
+    read();
+    const onDashboard = location.pathname.startsWith('/d/') || location.pathname.startsWith('/dashboard/');
+    if (!onDashboard) {
+      return;
+    }
+    // The dashboard model is assigned after the route renders, so chrome has to read it again.
+    const timer = window.setInterval(read, 500);
+    return () => window.clearInterval(timer);
+  }, [location.pathname]);
 
   return description;
+}
+
+function readDashboardDescription(pathname: string): string | undefined {
+  if (!pathname.startsWith('/d/') && !pathname.startsWith('/dashboard/')) {
+    return undefined;
+  }
+  const description = getDashboardSrv().getCurrent()?.description;
+  return typeof description === 'string' && description.trim() ? description : undefined;
 }
 
 const getStyles = (theme: GrafanaTheme2) => ({

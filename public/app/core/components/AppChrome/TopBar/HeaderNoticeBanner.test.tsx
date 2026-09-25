@@ -1,14 +1,19 @@
-import { render, screen, waitFor } from 'test/test-utils';
+import { act, render, screen, waitFor } from 'test/test-utils';
 
 import { locationService } from '@grafana/runtime';
-import { appEvents } from 'app/core/app_events';
-import { DashboardDescriptionChangedEvent } from 'app/types/events';
+import { getDashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
+import { type DashboardModel } from 'app/features/dashboard/state/DashboardModel';
 
 import { HeaderNoticeBanner } from './HeaderNoticeBanner';
 
 describe('HeaderNoticeBanner', () => {
   beforeEach(() => {
     sessionStorage.clear();
+    getDashboardSrv().setCurrent(undefined);
+  });
+
+  afterEach(() => {
+    getDashboardSrv().setCurrent(undefined);
   });
 
   it('renders nothing when the notice param and dashboard description are empty', () => {
@@ -25,24 +30,30 @@ describe('HeaderNoticeBanner', () => {
     expect(screen.getByRole('region', { name: 'Notice' })).toHaveTextContent('Scheduled maintenance');
   });
 
-  it('uses the dashboard description when the notice param is absent', async () => {
+  it('uses the dashboard description when the notice param is absent', () => {
+    getDashboardSrv().setCurrent({ description: 'Read-only window' } as DashboardModel);
+
     render(<HeaderNoticeBanner />, { historyOptions: { initialEntries: ['/d/abc'] } });
 
-    appEvents.publish(new DashboardDescriptionChangedEvent({ description: 'Read-only window' }));
-
-    expect(await screen.findByRole('region', { name: 'Notice' })).toHaveTextContent('Read-only window');
+    expect(screen.getByRole('region', { name: 'Notice' })).toHaveTextContent('Read-only window');
   });
 
-  it('prefers the notice query param over the dashboard description', async () => {
+  it('ignores the dashboard description when the page is not a dashboard', () => {
+    getDashboardSrv().setCurrent({ description: 'Read-only window' } as DashboardModel);
+
+    render(<HeaderNoticeBanner />, { historyOptions: { initialEntries: ['/explore'] } });
+
+    expect(screen.queryByRole('region', { name: 'Notice' })).not.toBeInTheDocument();
+  });
+
+  it('prefers the notice query param over the dashboard description', () => {
+    getDashboardSrv().setCurrent({ description: 'From dashboard' } as DashboardModel);
+
     render(<HeaderNoticeBanner />, {
       historyOptions: { initialEntries: ['/d/abc?notice=From+query'] },
     });
 
-    appEvents.publish(new DashboardDescriptionChangedEvent({ description: 'From dashboard' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('region', { name: 'Notice' })).toHaveTextContent('From query');
-    });
+    expect(screen.getByRole('region', { name: 'Notice' })).toHaveTextContent('From query');
     expect(screen.queryByText('From dashboard')).not.toBeInTheDocument();
   });
 
@@ -90,7 +101,9 @@ describe('HeaderNoticeBanner', () => {
 
     expect(screen.getByRole('region', { name: 'Notice' })).toHaveTextContent('Scheduled maintenance');
 
-    locationService.push('/explore');
+    act(() => {
+      locationService.push('/explore');
+    });
 
     await waitFor(() => {
       expect(screen.queryByRole('region', { name: 'Notice' })).not.toBeInTheDocument();
